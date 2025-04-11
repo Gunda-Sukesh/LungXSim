@@ -119,66 +119,77 @@ function prepareMeshesForTransition() {
     });
 }
 
-export function loadDrugModel(drugName) {
+export function loadDrugModel(drugName, dosageValue = 1.0) {
     loadModel('/src/assets/1.glb');
 
     setTimeout(() => {
-        applyDrugEffect(drugName);
+        applyDrugEffect(drugName, dosageValue);
     }, 500);
 }
 
-function applyDrugEffect(drugName) {
+function applyDrugEffect(drugName, dosageValue) {
     if (!currentModel) return;
 
     resetDrugEffects();
 
+    // Create color based on dosage (darker/more intense for higher doses)
+    const getDosageAdjustedColor = (baseColor, dosageValue) => {
+        const color = new THREE.Color(...baseColor);
+        // Increase intensity with dosage
+        const intensity = Math.min(1.0, 0.5 + dosageValue * 0.5);
+        color.r *= intensity;
+        color.g *= intensity;
+        color.b *= intensity;
+        return color;
+    };
+
     switch(drugName) {
         case 'albuterol':
-            startColorTransition(new THREE.Color(1.0, 0.1, 0.6), 5.0);
-            setBreathingSpeed(1.2);
+            startColorTransition(getDosageAdjustedColor([0.9, 0.3, 0.6], dosageValue), 3.0);
+            setBreathingSpeed(1.0 + dosageValue * 0.3);
             break;
         case 'budesonide':
-            startColorTransition(new THREE.Color(0.9, 0.5, 0.5), 8.0);
+            startColorTransition(getDosageAdjustedColor([0.8, 0.5, 0.5], dosageValue), 5.0);
             setBreathingSpeed(1.0);
             break;
         case 'prednisone':
-            startColorTransition(new THREE.Color(0.9, 0.6, 0.6), 6.0);
-            setBreathingSpeed(0.95);
+            startColorTransition(getDosageAdjustedColor([0.8, 0.6, 0.6], dosageValue), 4.0);
+            setBreathingSpeed(1.0 - dosageValue * 0.05);
             break;
         case 'epinephrine':
-            startColorTransition(new THREE.Color(0.8, 0.8, 0.9), 3.0);
-            setBreathingSpeed(1.5);
+            startColorTransition(getDosageAdjustedColor([0.7, 0.7, 0.9], dosageValue), 2.0);
+            setBreathingSpeed(1.0 + dosageValue * 0.5);
             break;
         case 'morphine':
-            startColorTransition(new THREE.Color(0.4, 0.6, 0.8), 7.0);
-            setBreathingSpeed(0.5);
+            startColorTransition(getDosageAdjustedColor([0.4, 0.5, 0.8], dosageValue), 6.0);
+            setBreathingSpeed(1.0 - dosageValue * 0.4);
             break;
         case 'cisplatin':
             startPatchyColorTransition([
-                new THREE.Color(0.7, 0.7, 0.7),
-                new THREE.Color(0.8, 0.6, 0.6)
-            ], 10.0);
-            setBreathingSpeed(0.8);
+                getDosageAdjustedColor([0.7, 0.7, 0.7], dosageValue),
+                getDosageAdjustedColor([0.8, 0.6, 0.6], dosageValue)
+            ], 7.0);
+            setBreathingSpeed(1.0 - dosageValue * 0.2);
             break;
         case 'isoniazid':
             startPatchyColorTransition([
-                new THREE.Color(0.5, 0.3, 0.3),
-                new THREE.Color(0.7, 0.5, 0.5)
-            ], 8.0);
-            setBreathingSpeed(0.9);
+                getDosageAdjustedColor([0.5, 0.3, 0.3], dosageValue),
+                getDosageAdjustedColor([0.7, 0.5, 0.5], dosageValue)
+            ], 6.0);
+            setBreathingSpeed(1.0 - dosageValue * 0.1);
             break;
         case 'saline':
-            startColorTransition(new THREE.Color(1.0, 0.7, 0.8), 4.0);
+            startColorTransition(getDosageAdjustedColor([0.8, 0.8, 1.0], dosageValue), 3.0);
             setBreathingSpeed(1.0);
             break;
         case 'nicotine':
-            startColorTransition(new THREE.Color(0.9, 0.4, 0.4), 6.0);
-            setBreathingSpeed(1.3);
-            setTimeout(() => setBreathingSpeed(0.7), 6000);
+            startColorTransition(getDosageAdjustedColor([0.8, 0.4, 0.4], dosageValue), 5.0);
+            setBreathingSpeed(1.0 + dosageValue * 0.3);
+            setTimeout(() => setBreathingSpeed(1.0 - dosageValue * 0.3), 6000);
             break;
         case 'antihistamines':
-            startColorTransition(new THREE.Color(0.9, 0.85, 0.8), 9.0);
-            setBreathingSpeed(0.9);
+            startColorTransition(getDosageAdjustedColor([0.9, 0.8, 0.8], dosageValue), 8.0);
+            setBreathingSpeed(1.0 - dosageValue * 0.1);
             break;
         default:
             break;
