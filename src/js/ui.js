@@ -9,7 +9,7 @@ const drugData = {
             { level: "Pediatric (45 mcg)", value: 0.5 },
             { level: "Severe (180 mcg)", value: 1.5 }
         ],
-        lungEffect: "Bronchodilation (red to pink)",
+        lungEffect: "Bronchodilation (spotted pink, fades after 15s)",
         breathingEffect: "Increased airflow",
         overdose: "Tachycardia, tremors"
     },
@@ -21,7 +21,7 @@ const drugData = {
             { level: "Moderate (400 mcg)", value: 1.0 },
             { level: "Severe (800 mcg)", value: 1.3 }
         ],
-        lungEffect: "Reduces inflammation",
+        lungEffect: "Reduces inflammation (spotted peach, fades after 15s)",
         breathingEffect: "Gradual improvement",
         overdose: "Oral thrush, adrenal suppression"
     },
@@ -33,8 +33,8 @@ const drugData = {
             { level: "Medium (20-40 mg)", value: 1.0 },
             { level: "High (60 mg)", value: 1.5 }
         ],
-        lungEffect: "Systemic anti-inflammatory",
-        breathingEffect: "Reduced inflammation",
+        lungEffect: "Systemic anti-inflammatory (spotted coral, fades after 15s)",
+        breathingEffect: "Stable breathing",
         overdose: "Hyperglycemia, osteoporosis"
     },
     epinephrine: {
@@ -45,7 +45,7 @@ const drugData = {
             { level: "Adult (0.3 mg)", value: 1.0 },
             { level: "Severe (0.5 mg)", value: 1.3 }
         ],
-        lungEffect: "Bronchodilation",
+        lungEffect: "Rapid bronchodilation (spotted purple, fades after 15s)",
         breathingEffect: "Rapid improvement",
         overdose: "Hypertensive crisis"
     },
@@ -57,7 +57,7 @@ const drugData = {
             { level: "Moderate (5 mg)", value: 1.0 },
             { level: "Severe (10 mg)", value: 1.5 }
         ],
-        lungEffect: "Respiratory depression",
+        lungEffect: "Respiratory depression (spotted blue, fades after 15s)",
         breathingEffect: "Slowed breathing",
         overdose: "Respiratory arrest"
     },
@@ -69,7 +69,7 @@ const drugData = {
             { level: "Medium (75 mg/m²)", value: 1.0 },
             { level: "High (100 mg/m²)", value: 1.3 }
         ],
-        lungEffect: "Potential toxicity",
+        lungEffect: "Potential toxicity (spotted gray/red, fades after 15s)",
         breathingEffect: "Possible fibrosis",
         overdose: "Nephrotoxicity"
     },
@@ -81,7 +81,7 @@ const drugData = {
             { level: "Treatment (5 mg/kg)", value: 1.0 },
             { level: "MDR-TB (high dose)", value: 1.2 }
         ],
-        lungEffect: "Anti-tubercular",
+        lungEffect: "Anti-tubercular (spotted brown, fades after 15s)",
         breathingEffect: "Gradual improvement",
         overdose: "Hepatotoxicity"
     },
@@ -93,7 +93,7 @@ const drugData = {
             { level: "Extended (5 ml)", value: 1.2 },
             { level: "Continuous", value: 1.5 }
         ],
-        lungEffect: "Moistens airways",
+        lungEffect: "Moistens airways (spotted light blue, fades after 15s)",
         breathingEffect: "No significant change",
         overdose: "None"
     },
@@ -105,7 +105,7 @@ const drugData = {
             { level: "Moderate (1 pack)", value: 1.0 },
             { level: "Heavy (2+ packs)", value: 1.3 }
         ],
-        lungEffect: "Vasoconstriction",
+        lungEffect: "Vasoconstriction (spotted red, fades after 15s)",
         breathingEffect: "Short-term stimulation",
         overdose: "Tachycardia"
     },
@@ -117,7 +117,7 @@ const drugData = {
             { level: "Strong (50 mg)", value: 1.0 },
             { level: "Sedating (75+ mg)", value: 1.2 }
         ],
-        lungEffect: "Reduces inflammation",
+        lungEffect: "Reduces inflammation (spotted pale pink, fades after 15s)",
         breathingEffect: "Mild sedation",
         overdose: "Drowsiness"
     }
@@ -138,10 +138,17 @@ function setupDrugSelector() {
         return;
     }
 
+    drugSelector.innerHTML = '<option value="">Select a drug</option>';
+    Object.keys(drugData).forEach(drugKey => {
+        const option = document.createElement('option');
+        option.value = drugKey;
+        option.textContent = drugData[drugKey].name;
+        drugSelector.appendChild(option);
+    });
+
     drugSelector.addEventListener('change', (e) => {
         const selectedDrug = e.target.value;
 
-        // Update dosage options
         updateDosageOptions(selectedDrug);
 
         if (selectedDrug && drugData[selectedDrug]) {
