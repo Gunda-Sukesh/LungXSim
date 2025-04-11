@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LungSimX - Drug Interaction Explorer</title>
+  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<!-- Landing Page Section -->
+<div id="landing" class="landing-page">
+  <div class="hero">
+    <nav>
+      <div class="logo">LungSimX</div>
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1>Advanced Pulmonary Drug Simulation</h1>
+        <p>Explore how different medications interact with the pulmonary system in our interactive 3D environment.</p>
+        <a href="#app-section" class="cta-button" id="explore-button">
+          <span>Explore Now</span>
+          <i class="fas fa-microscope"></i>
+        </a>
+      </div>
+
+      <div class="hero-visual">
+        <div class="hex-grid">
+          <div class="hex-row">
+            <div class="hex"></div>
+            <div class="hex"><i class="fas fa-lungs"></i></div>
+            <div class="hex"></div>
+          </div>
+          <div class="hex-row">
+            <div class="hex"><i class="fas fa-pills"></i></div>
+            <div class="hex"></div>
+            <div class="hex"><i class="fas fa-stethoscope"></i></div>
+          </div>
+          <div class="hex-row">
+            <div class="hex"></div>
+            <div class="hex"><i class="fas fa-dna"></i></div>
+            <div class="hex"></div>
+          </div>
+        </div>
+        <div class="circle-visual"></div>
+      </div>
+    </div>
+  </div>
+
+  <section id="features" class="features">
+    <h2>Powerful Simulation Features</h2>
+    <div class="feature-cards">
+      <div class="feature-card">
+        <i class="fas fa-pills"></i>
+        <h3>Multiple Drug Interactions</h3>
+        <p>Explore how 10+ medications affect pulmonary function in real-time.</p>
+      </div>
+      <div class="feature-card">
+        <i class="fas fa-chart-line"></i>
+        <h3>Detailed Analytics</h3>
+        <p>Monitor physiological changes and responses to medication inputs.</p>
+      </div>
+      <div class="feature-card">
+        <i class="fas fa-vr-cardboard"></i>
+        <h3>3D Visualization</h3>
+        <p>Interact with a detailed 3D model of the respiratory system.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="about">
+    <div class="about-content">
+      <h2>About LungSimX</h2>
+      <p>LungSimX is a state-of-the-art educational tool designed for medical professionals, students, and researchers to better understand how different drugs affect the pulmonary system.</p>
+      <p>Our platform combines advanced 3D modeling with accurate physiological simulations to provide a comprehensive learning experience.</p>
+    </div>
+  </section>
+
+  <section id="contact" class="contact">
+    <h2>Contact Us</h2>
+    <p>Have questions about LungSimX? Reach out to our team.</p>
+    <form>
+      <input type="email" placeholder="Your Email">
+      <textarea placeholder="Your Message"></textarea>
+      <button type="submit">Send Message</button>
+    </form>
+  </section>
+</div>
+
+<!-- Original App Section (Hidden Initially) -->
+<div id="app-section" class="app-section" style="display: none;">
+  <header>
+    <h1>LungSimX</h1>
+    <p>Explore drug effects on pulmonary system</p>
+    <button id="back-to-landing" class="back-button"><i class="fas fa-arrow-left"></i> Back</button>
+  </header>
+
+  <main>
+    <section class="control-panel">
+      <h2>Drug Selector</h2>
+      <select id="drug-selector">
+        <option value="">Select a drug...</option>
+        <option value="albuterol">Albuterol (Ventolin)</option>
+        <option value="budesonide">Budesonide (Pulmicort)</option>
+        <option value="prednisone">Prednisone</option>
+        <option value="epinephrine">Epinephrine (EpiPen)</option>
+        <option value="morphine">Morphine</option>
+        <option value="cisplatin">Cisplatin</option>
+        <option value="isoniazid">Isoniazid</option>
+        <option value="saline">Saline Nebulization</option>
+        <option value="nicotine">Nicotine</option>
+        <option value="antihistamines">Antihistamines</option>
+      </select>
+
+      <div id="drug-info" class="drug-info">
+        <h3 id="drug-name"></h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Type:</span>
+            <span id="drug-type" class="info-value"></span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Dosage:</span>
+            <span id="drug-dosage" class="info-value"></span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Lung Effect:</span>
+            <span id="drug-lung-effect" class="info-value"></span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Breathing Effect:</span>
+            <span id="drug-breathing-effect" class="info-value"></span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Overdose Effect:</span>
+            <span id="drug-overdose" class="info-value"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="visualization">
+      <div id="model-container"></div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="footer-content">
+    <div class="footer-logo">LungSimX</div>
+    <div class="footer-links">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">FAQ</a>
+    </div>
+    <div class="social-links">
+      <a href="#"><i class="fab fa-twitter"></i></a>
+      <a href="#"><i class="fab fa-facebook"></i></a>
+      <a href="#"><i class="fab fa-linkedin"></i></a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2025 LungSimX. All rights reserved.</p>
+  </div>
+</footer>
+
+<script type="module" src="src/js/threeApp.js"></script>
+<script type="module" src="src/js/ui.js"></script>
+<script>
+  // Landing page interactions
+  document.addEventListener('DOMContentLoaded', function() {
+    // Create animated background elements
+    createBackgroundElements();
+
+    // Handle explore button click
+    document.getElementById('explore-button').addEventListener('click', function(e) {
+      e.preventDefault();
+      document.getElementById('landing').style.display = 'none';
+      document.getElementById('app-section').style.display = 'block';
+
+      // If you have a lung model to load, you can trigger it here
+      // For example: loadLungModel();
+    });
+
+    // Handle back button click
+    document.getElementById('back-to-landing').addEventListener('click', function() {
+      document.getElementById('app-section').style.display = 'none';
+      document.getElementById('landing').style.display = 'block';
+    });
+  });
+
+  // Create animated background elements
+  function createBackgroundElements() {
+    const hero = document.querySelector('.hero');
+
+    // Create floating orbs
+    for (let i = 0; i < 15; i++) {
+      const orb = document.createElement('div');
+      orb.classList.add('floating-orb');
+      orb.style.left = Math.random() * 100 + '%';
+      orb.style.top = Math.random() * 100 + '%';
+      orb.style.animationDelay = Math.random() * 5 + 's';
+      orb.style.width = Math.random() * 50 + 20 + 'px';
+      orb.style.height = orb.style.width;
+      hero.appendChild(orb);
+    }
+
+    // Animate hex grid icons
+    const hexIcons = document.querySelectorAll('.hex i');
+    hexIcons.forEach((icon, index) => {
+      icon.style.animationDelay = (index * 0.2) + 's';
+    });
+  }
+</script>
+</body>
+</html>
