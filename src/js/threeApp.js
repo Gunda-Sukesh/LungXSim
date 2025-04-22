@@ -209,9 +209,9 @@ function applyDrugEffect(drugName, dosageValue) {
             high: [0.5, 0.3, 0.9]    // Deep purple
         },
         morphine: {
-            low: [0.5, 0.6, 0.9],    // Light blue
-            medium: [0.3, 0.4, 0.8], // Deep blue
-            high: [0.2, 0.3, 0.7]    // Darker blue
+            low: [0.7, 0.75, 0.9],    // Soft pale blue
+            medium: [0.5, 0.6, 0.8],  // Muted blue
+            high: [0.4, 0.5, 0.7]     // Dusky blue-gray
         },
         cisplatin: {
             low: [[0.7, 0.7, 0.7], [0.9, 0.5, 0.5]],    // Gray/light red
@@ -229,9 +229,9 @@ function applyDrugEffect(drugName, dosageValue) {
             high: [0.6, 0.7, 0.9]    // Slightly deeper blue
         },
         nicotine: {
-            low: [0.9, 0.5, 0.5],    // Light red
-            medium: [0.8, 0.3, 0.3], // Dark red
-            high: [0.7, 0.2, 0.2]    // Intense red
+            low: [0.95, 0.75, 0.75],    // Pale pinkish
+            medium: [0.85, 0.55, 0.55], // Muted rose
+            high: [0.75, 0.4, 0.4]      // Dusky red
         },
         antihistamines: {
             low: [1.0, 0.9, 0.9],    // Very pale pink
