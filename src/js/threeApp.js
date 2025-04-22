@@ -30,7 +30,7 @@ export function initThreeJS() {
 
     window.addEventListener('resize', onWindowResize);
 
-    loadModel('/src/assets/1.glb');
+    loadModel('/public/assets/1.glb');
 
     animate();
 }
@@ -156,7 +156,7 @@ function prepareMeshesForTransition() {
 }
 
 export function loadDrugModel(drugName, dosageValue = 1.0) {
-    loadModel('/src/assets/1.glb');
+    loadModel('/public/assets/1.glb');
 
     setTimeout(() => {
         applyDrugEffect(drugName, dosageValue);
