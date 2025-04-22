@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-let scene, camera, renderer, currentModel;
+let scene, camera, renderer, currentModel, controls;
 let mixer, animations;
 let clock = new THREE.Clock();
 let colorTransitionActive = false;
@@ -20,6 +21,15 @@ export function initThreeJS() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth * 0.7, window.innerHeight - 120);
     document.getElementById('model-container').appendChild(renderer.domElement);
+
+    // Initialize OrbitControls
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // Smooth rotation
+    controls.dampingFactor = 0.05;
+    controls.rotateSpeed = 1.0;
+    controls.enableZoom = true; // Allow zooming
+    controls.enablePan = true; // Allow panning
+    controls.target.set(0, 0, 0); // Initial target
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -56,12 +66,16 @@ export function loadModel(modelPath) {
             const size = box.getSize(new THREE.Vector3());
 
             currentModel.position.x = -center.x;
-            currentModel.position.y = -center.y - 1.5;
+            currentModel.position.y = -center.y - 3.75;
             currentModel.position.z = -center.z;
 
             const maxDim = Math.max(size.x, size.y, size.z);
             const scale = 6.0 / maxDim;
             currentModel.scale.set(scale, scale, scale);
+
+            // Update OrbitControls target to the model's center
+            controls.target.set(0, -1.5, 0); // Adjust based on model position
+            controls.update();
 
             prepareMeshesForTransition();
             buildMeshConnectivityGraph();
@@ -300,9 +314,6 @@ function applyDrugEffect(drugName, dosageValue) {
     }
 
     startBacterialSpreadColorTransition(targetColor, transitionDuration);
-
-    // We're no longer reverting color after a timeout
-    // The color will spread throughout the model and stay
 }
 
 function startBacterialSpreadColorTransition(targetColor, duration) {
@@ -535,6 +546,9 @@ function animate() {
     if (spreadingInProgress) {
         updateBacterialSpread(delta);
     }
+
+    // Update controls for smooth damping
+    controls.update();
 
     renderer.render(scene, camera);
 }
