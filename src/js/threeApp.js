@@ -7,6 +7,8 @@ let clock = new THREE.Clock();
 let colorTransitionActive = false;
 let colorTransitionDuration = 8.0; // Base duration for initial transition
 let colorTransitionMeshes = [];
+let spreadingInProgress = false;
+let spreadingQueue = []; // Queue to track meshes that will spread next
 
 export function initThreeJS() {
     scene = new THREE.Scene();
@@ -62,6 +64,7 @@ export function loadModel(modelPath) {
             currentModel.scale.set(scale, scale, scale);
 
             prepareMeshesForTransition();
+            buildMeshConnectivityGraph();
 
             if (gltf.animations && gltf.animations.length > 0) {
                 animations = gltf.animations;
@@ -76,6 +79,49 @@ export function loadModel(modelPath) {
             console.error('Error loading model:', error);
         }
     );
+}
+
+// Build a graph of mesh connectivity based on proximity
+function buildMeshConnectivityGraph() {
+    if (!currentModel) return;
+
+    // First collect all meshes with their positions
+    const meshPositions = [];
+
+    currentModel.traverse(function(child) {
+        if (child.isMesh) {
+            // Get world position of the mesh
+            const position = new THREE.Vector3();
+            child.getWorldPosition(position);
+
+            // Store mesh and its position
+            meshPositions.push({
+                mesh: child,
+                position: position
+            });
+
+            // Initialize neighbors array
+            child.userData.neighbors = [];
+        }
+    });
+
+    // Calculate connections based on proximity
+    const proximityThreshold = 1.0; // Adjust based on your model scale
+
+    for (let i = 0; i < meshPositions.length; i++) {
+        const meshA = meshPositions[i];
+
+        for (let j = 0; j < meshPositions.length; j++) {
+            if (i === j) continue;
+
+            const meshB = meshPositions[j];
+            const distance = meshA.position.distanceTo(meshB.position);
+
+            if (distance < proximityThreshold) {
+                meshA.mesh.userData.neighbors.push(meshB.mesh);
+            }
+        }
+    }
 }
 
 function prepareMeshesForTransition() {
@@ -98,6 +144,11 @@ function prepareMeshesForTransition() {
                     transitionSpeed: 0.6 + Math.random() * 0.3
                 };
             }
+
+            // Initialize infection state
+            child.userData.infected = false;
+            child.userData.infectionProgress = 0;
+            child.userData.infectionComplete = false;
 
             colorTransitionMeshes.push(child);
         }
@@ -190,61 +241,57 @@ function applyDrugEffect(drugName, dosageValue) {
     };
 
     let transitionDuration;
+    let targetColor;
+
     switch(drugName) {
         case 'albuterol':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.albuterol, dosageValue), 8.0);
+            targetColor = getDosageAdjustedColor(drugColors.albuterol, dosageValue);
             setBreathingSpeed(1.2 + dosageValue * 0.4);
             transitionDuration = 8.0;
             break;
         case 'budesonide':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.budesonide, dosageValue), 10.0);
+            targetColor = getDosageAdjustedColor(drugColors.budesonide, dosageValue);
             setBreathingSpeed(1.0 + dosageValue * 0.1);
             transitionDuration = 10.0;
             break;
         case 'prednisone':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.prednisone, dosageValue), 9.0);
+            targetColor = getDosageAdjustedColor(drugColors.prednisone, dosageValue);
             setBreathingSpeed(1.0);
             transitionDuration = 9.0;
             break;
         case 'epinephrine':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.epinephrine, dosageValue), 7.0);
+            targetColor = getDosageAdjustedColor(drugColors.epinephrine, dosageValue);
             setBreathingSpeed(1.3 + dosageValue * 0.5);
             transitionDuration = 7.0;
             break;
         case 'morphine':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.morphine, dosageValue), 12.0);
+            targetColor = getDosageAdjustedColor(drugColors.morphine, dosageValue);
             setBreathingSpeed(0.7 - dosageValue * 0.3);
             transitionDuration = 12.0;
             break;
         case 'cisplatin':
-            startSpottedPatchyColorTransition(
-                drugColors.cisplatin[dosageValue <= 0.7 ? 'low' : dosageValue <= 1.0 ? 'medium' : 'high'],
-                14.0
-            );
+            targetColor = new THREE.Color(...drugColors.cisplatin[dosageValue <= 0.7 ? 'low' : dosageValue <= 1.0 ? 'medium' : 'high'][0]);
             setBreathingSpeed(0.9 - dosageValue * 0.2);
             transitionDuration = 14.0;
             break;
         case 'isoniazid':
-            startSpottedPatchyColorTransition(
-                drugColors.isoniazid[dosageValue <= 0.7 ? 'low' : dosageValue <= 1.0 ? 'medium' : 'high'],
-                13.0
-            );
+            targetColor = new THREE.Color(...drugColors.isoniazid[dosageValue <= 0.7 ? 'low' : dosageValue <= 1.0 ? 'medium' : 'high'][0]);
             setBreathingSpeed(1.0 + dosageValue * 0.05);
             transitionDuration = 13.0;
             break;
         case 'saline':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.saline, dosageValue), 8.0);
+            targetColor = getDosageAdjustedColor(drugColors.saline, dosageValue);
             setBreathingSpeed(1.0);
             transitionDuration = 8.0;
             break;
         case 'nicotine':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.nicotine, dosageValue), 10.0);
+            targetColor = getDosageAdjustedColor(drugColors.nicotine, dosageValue);
             setBreathingSpeed(1.1 + dosageValue * 0.3);
             setTimeout(() => setBreathingSpeed(0.8 - dosageValue * 0.2), 7000);
             transitionDuration = 10.0;
             break;
         case 'antihistamines':
-            startSpottedColorTransition(getDosageAdjustedColor(drugColors.antihistamines, dosageValue), 11.0);
+            targetColor = getDosageAdjustedColor(drugColors.antihistamines, dosageValue);
             setBreathingSpeed(0.9 - dosageValue * 0.1);
             transitionDuration = 11.0;
             break;
@@ -252,65 +299,152 @@ function applyDrugEffect(drugName, dosageValue) {
             return;
     }
 
-    // Revert color after 15 seconds
-    setTimeout(() => {
-        revertColorTransition(5.0); // 5-second fade back
-        setBreathingSpeed(1.0); // Reset breathing speed
-    }, 15000);
+    startBacterialSpreadColorTransition(targetColor, transitionDuration);
+
+    // We're no longer reverting color after a timeout
+    // The color will spread throughout the model and stay
 }
 
-function startSpottedColorTransition(targetColor, duration) {
-    colorTransitionActive = false;
+function startBacterialSpreadColorTransition(targetColor, duration) {
+    colorTransitionActive = true;
+    colorTransitionDuration = duration;
+    spreadingInProgress = true;
 
     if (colorTransitionMeshes.length === 0) {
         prepareMeshesForTransition();
+        buildMeshConnectivityGraph();
     }
 
+    // Reset all meshes' infection state
     colorTransitionMeshes.forEach(mesh => {
-        if (mesh.material) {
-            const variedTarget = targetColor.clone();
-            variedTarget.r = Math.min(1.0, variedTarget.r + (Math.random() - 0.5) * 0.05);
-            variedTarget.g = Math.min(1.0, variedTarget.g + (Math.random() - 0.5) * 0.05);
-            variedTarget.b = Math.min(1.0, variedTarget.b + (Math.random() - 0.5) * 0.05);
+        mesh.userData.infected = false;
+        mesh.userData.infectionProgress = 0;
+        mesh.userData.infectionComplete = false;
+    });
 
-            if (Array.isArray(mesh.material)) {
-                mesh.material.forEach(mat => {
-                    if (mat.color) {
-                        mat.userData = mat.userData || {};
-                        mat.userData.transitionStartColor = mat.color.clone();
-                        mat.userData.transitionEndColor = variedTarget.clone();
-                        mat.userData.transitionProgress = 0;
-                        mat.userData.transitionDelay = mesh.userData.originalMaterial.transitionDelay;
-                    }
-                });
-            } else if (mesh.material.color) {
-                mesh.userData.transitionStartColor = mesh.material.color.clone();
-                mesh.userData.transitionEndColor = variedTarget.clone();
-                mesh.userData.transitionProgress = 0;
-                mesh.userData.transitionDelay = mesh.userData.originalMaterial.transitionDelay;
+    // Choose random initial infection points (1-3 points)
+    const initialInfectionCount = Math.floor(Math.random() * 3) + 1;
+    const initialInfectionPoints = [];
+
+    // Select random meshes for initial infection
+    while (initialInfectionPoints.length < initialInfectionCount && initialInfectionPoints.length < colorTransitionMeshes.length) {
+        const randomIndex = Math.floor(Math.random() * colorTransitionMeshes.length);
+        const selectedMesh = colorTransitionMeshes[randomIndex];
+
+        // Ensure we don't select the same mesh twice
+        if (!initialInfectionPoints.includes(selectedMesh)) {
+            initialInfectionPoints.push(selectedMesh);
+        }
+    }
+
+    // Mark initial infection points
+    initialInfectionPoints.forEach(mesh => {
+        mesh.userData.infected = true;
+        spreadingQueue.push(mesh);
+
+        // Set up target color for this mesh with slight variation
+        const variedColor = targetColor.clone();
+        variedColor.r = Math.min(1.0, variedColor.r + (Math.random() - 0.5) * 0.08);
+        variedColor.g = Math.min(1.0, variedColor.g + (Math.random() - 0.5) * 0.08);
+        variedColor.b = Math.min(1.0, variedColor.b + (Math.random() - 0.5) * 0.08);
+
+        if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(mat => {
+                if (mat.color) {
+                    mat.userData = mat.userData || {};
+                    mat.userData.transitionStartColor = mat.color.clone();
+                    mat.userData.transitionEndColor = variedColor.clone();
+                    mat.userData.transitionProgress = 0;
+                }
+            });
+        } else if (mesh.material.color) {
+            mesh.userData.transitionStartColor = mesh.material.color.clone();
+            mesh.userData.transitionEndColor = variedColor.clone();
+            mesh.userData.transitionProgress = 0;
+        }
+    });
+}
+
+function updateBacterialSpread(deltaTime) {
+    if (!spreadingInProgress) return;
+
+    const newlyInfectedMeshes = [];
+
+    // Process currently infected meshes
+    colorTransitionMeshes.forEach(mesh => {
+        if (mesh.userData.infected && !mesh.userData.infectionComplete) {
+            // Update infection progress
+            const speedFactor = mesh.userData.originalMaterial?.transitionSpeed || 1.0;
+            mesh.userData.infectionProgress += (deltaTime / colorTransitionDuration) * speedFactor * 2;
+
+            // Update color based on infection progress
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(mat => {
+                        if (mat.color && mat.userData?.transitionStartColor && mat.userData?.transitionEndColor) {
+                            applyInterpolatedColor(
+                                mat.color,
+                                mat.userData.transitionStartColor,
+                                mat.userData.transitionEndColor,
+                                mesh.userData.infectionProgress
+                            );
+                        }
+                    });
+                } else if (mesh.material.color && mesh.userData.transitionStartColor && mesh.userData.transitionEndColor) {
+                    applyInterpolatedColor(
+                        mesh.material.color,
+                        mesh.userData.transitionStartColor,
+                        mesh.userData.transitionEndColor,
+                        mesh.userData.infectionProgress
+                    );
+                }
+            }
+
+            // Check if infection is complete for this mesh
+            if (mesh.userData.infectionProgress >= 1.0) {
+                mesh.userData.infectionComplete = true;
+
+                // Spread to neighbors
+                if (mesh.userData.neighbors && mesh.userData.neighbors.length > 0) {
+                    mesh.userData.neighbors.forEach(neighborMesh => {
+                        // Check if neighbor is not already infected
+                        if (!neighborMesh.userData.infected) {
+                            // Random chance to infect (70-90% chance)
+                            if (Math.random() < 0.8) {
+                                neighborMesh.userData.infected = true;
+                                newlyInfectedMeshes.push(neighborMesh);
+                            }
+                        }
+                    });
+                }
             }
         }
     });
 
-    colorTransitionActive = true;
-    colorTransitionDuration = duration;
-}
+    // Set up newly infected meshes with target colors
+    newlyInfectedMeshes.forEach(mesh => {
+        // Find a parent that infected this mesh (random selection if multiple)
+        const infectedNeighbors = mesh.userData.neighbors.filter(n => n.userData.infectionComplete);
 
-function startSpottedPatchyColorTransition(targetColors, duration) {
-    colorTransitionActive = false;
+        if (infectedNeighbors.length > 0) {
+            const parentMesh = infectedNeighbors[Math.floor(Math.random() * infectedNeighbors.length)];
+            let targetColor;
 
-    if (colorTransitionMeshes.length === 0) {
-        prepareMeshesForTransition();
-    }
+            // Get parent's target color
+            if (Array.isArray(parentMesh.material)) {
+                const mat = parentMesh.material[0];
+                targetColor = mat.userData?.transitionEndColor || new THREE.Color(1, 1, 1);
+            } else {
+                targetColor = parentMesh.userData.transitionEndColor || new THREE.Color(1, 1, 1);
+            }
 
-    colorTransitionMeshes.forEach(mesh => {
-        if (mesh.material) {
-            const baseColor = targetColors[Math.floor(Math.random() * targetColors.length)];
-            const variedColor = new THREE.Color(...baseColor);
-            variedColor.r = Math.min(1.0, variedColor.r + (Math.random() - 0.5) * 0.08);
-            variedColor.g = Math.min(1.0, variedColor.g + (Math.random() - 0.5) * 0.08);
-            variedColor.b = Math.min(1.0, variedColor.b + (Math.random() - 0.5) * 0.08);
+            // Apply slight variation to the color
+            const variedColor = targetColor.clone();
+            variedColor.r = Math.min(1.0, Math.max(0, variedColor.r + (Math.random() - 0.5) * 0.1));
+            variedColor.g = Math.min(1.0, Math.max(0, variedColor.g + (Math.random() - 0.5) * 0.1));
+            variedColor.b = Math.min(1.0, Math.max(0, variedColor.b + (Math.random() - 0.5) * 0.1));
 
+            // Set up transition colors
             if (Array.isArray(mesh.material)) {
                 mesh.material.forEach(mat => {
                     if (mat.color) {
@@ -318,102 +452,28 @@ function startSpottedPatchyColorTransition(targetColors, duration) {
                         mat.userData.transitionStartColor = mat.color.clone();
                         mat.userData.transitionEndColor = variedColor.clone();
                         mat.userData.transitionProgress = 0;
-                        mat.userData.transitionDelay = mesh.userData.originalMaterial.transitionDelay;
                     }
                 });
             } else if (mesh.material.color) {
                 mesh.userData.transitionStartColor = mesh.material.color.clone();
                 mesh.userData.transitionEndColor = variedColor.clone();
                 mesh.userData.transitionProgress = 0;
-                mesh.userData.transitionDelay = mesh.userData.originalMaterial.transitionDelay;
             }
         }
     });
 
-    colorTransitionActive = true;
-    colorTransitionDuration = duration;
-}
+    // Check if spreading is complete
+    const allComplete = colorTransitionMeshes.every(mesh =>
+        !mesh.userData.infected || mesh.userData.infectionComplete
+    );
 
-function revertColorTransition(duration) {
-    colorTransitionActive = false;
-
-    if (colorTransitionMeshes.length === 0) {
-        prepareMeshesForTransition();
-    }
-
-    colorTransitionMeshes.forEach(mesh => {
-        if (mesh.material) {
-            const originalColor = mesh.userData.originalMaterial.color.clone();
-            if (Array.isArray(mesh.material)) {
-                mesh.material.forEach(mat => {
-                    if (mat.color) {
-                        mat.userData = mat.userData || {};
-                        mat.userData.transitionStartColor = mat.color.clone();
-                        mat.userData.transitionEndColor = originalColor.clone();
-                        mat.userData.transitionProgress = 0;
-                        mat.userData.transitionDelay = mesh.userData.originalMaterial.transitionDelay;
-                    }
-                });
-            } else if (mesh.material.color) {
-                mesh.userData.transitionStartColor = mesh.material.color.clone();
-                mesh.userData.transitionEndColor = originalColor.clone();
-                mesh.userData.transitionProgress = 0;
-                mesh.userData.transitionDelay = mesh.userData.originalMaterial.transitionDelay;
-            }
-        }
-    });
-
-    colorTransitionActive = true;
-    colorTransitionDuration = duration;
-}
-
-function updateColorTransition(deltaTime) {
-    if (!colorTransitionActive) return;
-
-    let allComplete = true;
-
-    colorTransitionMeshes.forEach(mesh => {
-        if (mesh.material) {
-            if (Array.isArray(mesh.material)) {
-                mesh.material.forEach(mat => {
-                    if (mat.userData && mat.userData.transitionStartColor && mat.userData.transitionEndColor) {
-                        if (mat.userData.transitionDelay > 0) {
-                            mat.userData.transitionDelay -= deltaTime;
-                            allComplete = false;
-                        } else {
-                            const speedFactor = mesh.userData.originalMaterial?.transitionSpeed || 1.0;
-                            mat.userData.transitionProgress += (deltaTime / colorTransitionDuration) * speedFactor;
-
-                            if (mat.userData.transitionProgress < 1.0) {
-                                allComplete = false;
-                                applyInterpolatedColor(mat.color, mat.userData.transitionStartColor, mat.userData.transitionEndColor, mat.userData.transitionProgress);
-                            }
-                        }
-                    }
-                });
-            } else if (mesh.userData.transitionStartColor && mesh.userData.transitionEndColor && mesh.material.color) {
-                if (mesh.userData.transitionDelay > 0) {
-                    mesh.userData.transitionDelay -= deltaTime;
-                    allComplete = false;
-                } else {
-                    const speedFactor = mesh.userData.originalMaterial?.transitionSpeed || 1.0;
-                    mesh.userData.transitionProgress += (deltaTime / colorTransitionDuration) * speedFactor;
-
-                    if (mesh.userData.transitionProgress < 1.0) {
-                        allComplete = false;
-                        applyInterpolatedColor(mesh.material.color, mesh.userData.transitionStartColor, mesh.userData.transitionEndColor, mesh.userData.transitionProgress);
-                    }
-                }
-            }
-        }
-    });
-
-    if (allComplete) {
-        colorTransitionActive = false;
+    if (allComplete && newlyInfectedMeshes.length === 0) {
+        spreadingInProgress = false;
     }
 }
 
 function applyInterpolatedColor(targetColorObj, startColor, endColor, progress) {
+    // Use sigmoid function for smooth transition
     const smoothProgress = 1 / (1 + Math.exp(-12 * (progress - 0.5)));
     targetColorObj.r = startColor.r + (endColor.r - startColor.r) * smoothProgress;
     targetColorObj.g = startColor.g + (endColor.g - startColor.g) * smoothProgress;
@@ -428,6 +488,8 @@ function setBreathingSpeed(multiplier) {
 
 function resetDrugEffects() {
     colorTransitionActive = false;
+    spreadingInProgress = false;
+    spreadingQueue = [];
 
     if (!currentModel) return;
 
@@ -442,6 +504,11 @@ function resetDrugEffects() {
             } else if (child.userData.originalMaterial && child.userData.originalMaterial.color) {
                 child.material.color.copy(child.userData.originalMaterial.color);
             }
+
+            // Reset infection state
+            child.userData.infected = false;
+            child.userData.infectionProgress = 0;
+            child.userData.infectionComplete = false;
         }
     });
 
@@ -465,8 +532,8 @@ function animate() {
         mixer.update(delta);
     }
 
-    if (colorTransitionActive) {
-        updateColorTransition(delta);
+    if (spreadingInProgress) {
+        updateBacterialSpread(delta);
     }
 
     renderer.render(scene, camera);
