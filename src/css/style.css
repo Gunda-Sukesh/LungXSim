@@ -86,7 +86,6 @@ select {
   height: 100%;
   background-color: var(--secondary-color); /* Use theme color */
   border-radius: 4px;
-  transition: width 0.1s linear; /* Smooth transition for updates */
 }
 
 /* Back button for app section */

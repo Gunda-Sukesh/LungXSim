@@ -18,6 +18,14 @@ let revertTransitionDuration = 15.0; // Duration for reverting back to original 
 let originalBreathingSpeed = 1.0;
 let drugActiveTimerId = null;
 
+// Define duration constants (in milliseconds)
+const EFFECT_APPLICATION_DELAY = 500;
+const EFFECT_ACTIVE_DURATION = 15000; 
+const REVERT_DURATION = 15000; // Corresponds to revertTransitionDuration
+
+// Update revertTransitionDuration to use the constant (converted to seconds for THREE.Clock)
+revertTransitionDuration = REVERT_DURATION / 1000.0; 
+
 export function initThreeJS() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f0f0);
@@ -191,12 +199,20 @@ export function loadDrugModel(drugName, dosageValue = 1.0) {
     setTimeout(() => {
         applyDrugEffect(drugName, dosageValue);
         
+        // Calculate total duration for the progress bar (Active Time + Revert Time)
+        const totalDurationMs = EFFECT_ACTIVE_DURATION + REVERT_DURATION;
+        
+        // Dispatch event with the calculated total duration for the UI
+        document.dispatchEvent(new CustomEvent('effectDurationCalculated', { 
+            detail: { duration: totalDurationMs } 
+        }));
+
         // Schedule reversion back to original state after drug effect duration
         drugActiveTimerId = setTimeout(() => {
             startRevertToOriginal();
             drugActiveTimerId = null; // Clear the timer ID after it runs
-        }, 15000); // Start reverting after 15 seconds
-    }, 500); // Delay applying effect slightly after model load
+        }, EFFECT_ACTIVE_DURATION); // Start reverting after the active duration
+    }, EFFECT_APPLICATION_DELAY); // Delay applying effect slightly after model load
 }
 
 function applyDrugEffect(drugName, dosageValue) {
