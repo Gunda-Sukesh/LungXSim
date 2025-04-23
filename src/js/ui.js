@@ -123,6 +123,8 @@ const drugData = {
     }
 };
 
+let progressBarIntervalId = null; // Keep track of the interval timer
+
 document.addEventListener('DOMContentLoaded', () => {
     initThreeJS();
     setupDrugSelector();
@@ -132,8 +134,11 @@ function setupDrugSelector() {
     const drugSelector = document.getElementById('drug-selector');
     const dosageSelector = document.getElementById('dosage-selector');
     const drugInfo = document.getElementById('drug-info');
+    // Get progress bar elements
+    const progressBarContainer = document.getElementById('effect-progress-container');
+    const progressBar = document.getElementById('effect-progress-bar');
 
-    if (!drugSelector || !dosageSelector || !drugInfo) {
+    if (!drugSelector || !dosageSelector || !drugInfo || !progressBarContainer || !progressBar) {
         console.error('Required DOM elements not found');
         return;
     }
@@ -151,13 +156,28 @@ function setupDrugSelector() {
 
         updateDosageOptions(selectedDrug);
 
+        // Clear any previous progress bar animation
+        if (progressBarIntervalId) {
+            clearInterval(progressBarIntervalId);
+            progressBarIntervalId = null;
+        }
+
         if (selectedDrug && drugData[selectedDrug]) {
             const defaultDosage = drugData[selectedDrug].dosageLevels[0].value;
             loadDrugModel(selectedDrug, defaultDosage);
             updateDrugInfo(drugData[selectedDrug], defaultDosage);
             drugInfo.style.display = 'block';
+
+            // Show and start the progress bar
+            progressBarContainer.style.display = 'block';
+            progressBar.style.width = '0%'; // Reset width
+            startProgressBar(30000, progressBar); // Start 30-second animation
+
         } else {
             drugInfo.style.display = 'none';
+            // Hide progress bar if no drug is selected
+            progressBarContainer.style.display = 'none';
+            progressBar.style.width = '0%';
         }
     });
 
@@ -165,9 +185,20 @@ function setupDrugSelector() {
         const selectedDrug = drugSelector.value;
         const dosageValue = parseFloat(e.target.value);
 
+        // Clear any previous progress bar animation on dosage change too
+        if (progressBarIntervalId) {
+            clearInterval(progressBarIntervalId);
+            progressBarIntervalId = null;
+        }
+
         if (selectedDrug && drugData[selectedDrug]) {
             loadDrugModel(selectedDrug, dosageValue);
             updateDrugInfo(drugData[selectedDrug], dosageValue);
+
+            // Restart progress bar for new dosage
+            progressBarContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            startProgressBar(30000, progressBar);
         }
     });
 }
@@ -205,4 +236,25 @@ function updateDrugInfo(data, dosageValue) {
             element.textContent = value;
         }
     }
+}
+
+// Function to animate the progress bar
+function startProgressBar(duration, progressBarElement) {
+    const startTime = Date.now();
+
+    progressBarIntervalId = setInterval(() => {
+        const elapsedTime = Date.now() - startTime;
+        const progress = Math.min(1, elapsedTime / duration); // Ensure progress doesn't exceed 1
+
+        progressBarElement.style.width = progress * 100 + '%';
+
+        if (progress >= 1) {
+            clearInterval(progressBarIntervalId);
+            progressBarIntervalId = null;
+            // Optionally hide the bar after completion
+            // setTimeout(() => {
+            //     document.getElementById('effect-progress-container').style.display = 'none';
+            // }, 1000); 
+        }
+    }, 50); // Update roughly 20 times per second
 }

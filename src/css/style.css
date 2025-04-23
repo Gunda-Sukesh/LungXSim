@@ -71,6 +71,24 @@ select {
   margin-top: 0.2rem;
 }
 
+/* Progress Bar Styles */
+#progress-bar-background {
+  width: 100%;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  height: 10px;
+  margin-top: 0.3rem;
+  overflow: hidden; /* Ensure inner bar stays within bounds */
+}
+
+#effect-progress-bar {
+  width: 0%; /* Start at 0 */
+  height: 100%;
+  background-color: var(--secondary-color); /* Use theme color */
+  border-radius: 4px;
+  transition: width 0.1s linear; /* Smooth transition for updates */
+}
+
 /* Back button for app section */
 .back-button {
   position: absolute;
