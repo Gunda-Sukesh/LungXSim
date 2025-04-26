@@ -69,6 +69,7 @@ select {
 .info-value {
   display: block;
   margin-top: 0.2rem;
+  color: #555; /* Slightly dimmer color for values */
 }
 
 /* Progress Bar Styles */
@@ -87,6 +88,14 @@ select {
   background-color: var(--secondary-color); /* Use theme color */
   border-radius: 4px;
 }
+
+/* Style for the timer display */
+#effect-timer {
+  font-weight: bold;
+  color: var(--primary-color); /* Match label color or make distinct */
+  margin-left: 0.5rem; /* Add some space if needed */
+}
+
 
 /* Back button for app section */
 .back-button {

@@ -47,8 +47,8 @@
         <div class="circle-visual"></div>
       </div>
     </div>
-    </div>
   </div>
+</div>
 
 <!-- Original App Section (Hidden Initially) -->
 <div id="app-section" class="app-section" style="display: none;">
@@ -107,7 +107,10 @@
 
       <!-- Add Progress Bar -->
       <div id="effect-progress-container" style="display: none; margin-top: 1rem;">
-        <span class="info-label">Effect Duration:</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+          <span class="info-label">Effect Duration:</span>
+          <span id="effect-timer" class="info-value">00:00</span> <!-- Added Timer Display -->
+        </div>
         <div id="progress-bar-background">
           <div id="effect-progress-bar"></div>
         </div>
@@ -167,4 +170,3 @@
 </script>
 </body>
 </html>
-``` 

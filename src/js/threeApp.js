@@ -6,7 +6,7 @@ let scene, camera, renderer, currentModel, controls;
 let mixer, animations;
 let clock = new THREE.Clock();
 let colorTransitionActive = false;
-let colorTransitionDuration = 8.0; // Base duration for initial transition
+let colorTransitionDuration = 8.0; // Base duration for initial visual spread speed
 let colorTransitionMeshes = [];
 let spreadingInProgress = false;
 let spreadingQueue = []; // Queue to track meshes that will spread next
@@ -14,17 +14,16 @@ let spreadingQueue = []; // Queue to track meshes that will spread next
 // Add reversion variables
 let revertingInProgress = false;
 let revertingMeshes = [];
-let revertTransitionDuration = 15.0; // Duration for reverting back to original state
+let revertTransitionDuration = 15.0; // Default/initial value (in seconds), will be updated by loadDrugModel
 let originalBreathingSpeed = 1.0;
 let drugActiveTimerId = null;
 
 // Define duration constants (in milliseconds)
-const EFFECT_APPLICATION_DELAY = 500;
-const EFFECT_ACTIVE_DURATION = 15000; 
-const REVERT_DURATION = 15000; // Corresponds to revertTransitionDuration
+const EFFECT_APPLICATION_DELAY = 500; // Delay before effect starts after selection
+// Removed fixed EFFECT_ACTIVE_DURATION and REVERT_DURATION
 
 // Update revertTransitionDuration to use the constant (converted to seconds for THREE.Clock)
-revertTransitionDuration = REVERT_DURATION / 1000.0; 
+revertTransitionDuration = revertTransitionDuration;
 
 export function initThreeJS() {
     scene = new THREE.Scene();
@@ -184,7 +183,8 @@ function prepareMeshesForTransition() {
     });
 }
 
-export function loadDrugModel(drugName, dosageValue = 1.0) {
+// Modified to accept totalDurationMs from UI
+export function loadDrugModel(drugName, dosageValue = 1.0, totalDurationMs = 30000) { // Default 30s total duration
     // Clear any existing timer to prevent premature reversion if a new drug is selected quickly
     if (drugActiveTimerId) {
         clearTimeout(drugActiveTimerId);
@@ -192,26 +192,41 @@ export function loadDrugModel(drugName, dosageValue = 1.0) {
     }
     // Stop any ongoing reversion immediately
     revertingInProgress = false;
-    
+
+    // If no drug is selected (drugName is null/empty), reset and return
+    if (!drugName) {
+        resetVisualsToOriginal();
+        // Optionally hide progress bar/timer if UI doesn't handle it
+        document.dispatchEvent(new CustomEvent('effectDurationCalculated', {
+            detail: { duration: 0 }
+        }));
+        return;
+    }
+
     // Reloading the model implicitly resets colors/speed via prepareMeshesForTransition and mixer setup
-    loadModel('/1.glb'); 
+    loadModel('/1.glb');
 
     setTimeout(() => {
         applyDrugEffect(drugName, dosageValue);
-        
-        // Calculate total duration for the progress bar (Active Time + Revert Time)
-        const totalDurationMs = EFFECT_ACTIVE_DURATION + REVERT_DURATION;
-        
-        // Dispatch event with the calculated total duration for the UI
-        document.dispatchEvent(new CustomEvent('effectDurationCalculated', { 
-            detail: { duration: totalDurationMs } 
+
+        // Calculate active and revert durations based on the total duration (e.g., 50/50 split)
+        const activeDurationMs = totalDurationMs / 2;
+        const calculatedRevertDurationMs = totalDurationMs / 2;
+
+        // Update the revert transition duration (in seconds) for the animation loop
+        revertTransitionDuration = calculatedRevertDurationMs / 1000.0;
+
+        // Dispatch event with the total duration for the UI progress bar and timer
+        document.dispatchEvent(new CustomEvent('effectDurationCalculated', {
+            detail: { duration: totalDurationMs }
         }));
 
-        // Schedule reversion back to original state after drug effect duration
+        // Schedule reversion back to original state after the calculated active duration
         drugActiveTimerId = setTimeout(() => {
             startRevertToOriginal();
             drugActiveTimerId = null; // Clear the timer ID after it runs
-        }, EFFECT_ACTIVE_DURATION); // Start reverting after the active duration
+        }, activeDurationMs); // Start reverting after the active phase duration
+
     }, EFFECT_APPLICATION_DELAY); // Delay applying effect slightly after model load
 }
 
@@ -219,10 +234,10 @@ function applyDrugEffect(drugName, dosageValue) {
     if (!currentModel) return;
 
     // Cancel any ongoing reversion before applying new effect
-    revertingInProgress = false; 
-    
+    revertingInProgress = false;
+
     // Reset state variables, but don't immediately revert visual changes if a drug is reapplied quickly
-    resetDrugStateVariables(); 
+    resetDrugStateVariables();
 
     // Store the original breathing speed before applying the new effect
     originalBreathingSpeed = mixer ? mixer.timeScale : 1.0; // Capture current speed if mixer exists
@@ -546,11 +561,11 @@ function setBreathingSpeed(multiplier) {
 // New function to start reverting back to original state
 function startRevertToOriginal() {
     if (!currentModel || revertingInProgress || spreadingInProgress) return; // Don't revert if applying effect
-    
+
     console.log("Starting reversion to original state...");
     revertingInProgress = true;
     revertingMeshes = [];
-    
+
     // Set up reversion for each mesh
     currentModel.traverse(function(child) {
         if (child.isMesh && child.material && child.userData.originalMaterial) {
@@ -569,13 +584,13 @@ function startRevertToOriginal() {
                 child.userData.revertEndColor = child.userData.originalMaterial.color.clone();
                 child.userData.revertProgress = 0;
             }
-            
+
             // Use similar delay/speed properties as the infection for consistency
-            child.userData.revertDelay = child.userData.originalMaterial.transitionDelay || Math.random() * 4.0; 
+            child.userData.revertDelay = child.userData.originalMaterial.transitionDelay || Math.random() * 4.0;
             child.userData.revertSpeed = child.userData.originalMaterial.transitionSpeed || 1.0;
             child.userData.revertActive = false;
             child.userData.revertComplete = false;
-            
+
             revertingMeshes.push(child);
         }
     });
@@ -587,9 +602,9 @@ function startRevertToOriginal() {
         const randomIndex = Math.floor(Math.random() * revertingMeshes.length);
         const meshToStart = revertingMeshes[randomIndex];
         if (!meshToStart.userData.revertActive) {
-             meshToStart.userData.revertActive = true;
-             meshToStart.userData.revertDelay = 0; // Start immediately
-             startedCount++;
+            meshToStart.userData.revertActive = true;
+            meshToStart.userData.revertDelay = 0; // Start immediately
+            startedCount++;
         }
     }
 }
@@ -597,14 +612,14 @@ function startRevertToOriginal() {
 // Function to update the reversion process
 function updateReversion(deltaTime) {
     if (!revertingInProgress) return;
-    
+
     let allMeshesComplete = true;
     const newlyActivatedMeshes = []; // Track meshes activated this frame to spread from
-    
+
     // Process all meshes potentially in reversion state
     revertingMeshes.forEach(mesh => {
         if (mesh.userData.revertComplete) return; // Skip completed
-        
+
         allMeshesComplete = false; // If any mesh is not complete, the process isn't finished
 
         // Handle delay before starting reversion for this mesh
@@ -619,10 +634,12 @@ function updateReversion(deltaTime) {
                 return; // Still waiting for delay
             }
         }
-        
+
         // Update reversion progress for active meshes
         const speedFactor = mesh.userData.revertSpeed || 1.0;
-        mesh.userData.revertProgress += (deltaTime / revertTransitionDuration) * speedFactor * 2; // Similar speed factor as infection
+        // Use the dynamically set revertTransitionDuration (in seconds)
+        const progressIncrement = (deltaTime / Math.max(0.1, revertTransitionDuration)) * speedFactor * 2; // Avoid division by zero
+        mesh.userData.revertProgress += progressIncrement;
         mesh.userData.revertProgress = Math.min(mesh.userData.revertProgress, 1.0); // Clamp progress
 
         // Apply color transition back to original
@@ -645,7 +662,7 @@ function updateReversion(deltaTime) {
                 mesh.userData.revertProgress
             );
         }
-        
+
         // Check if reversion is complete for this mesh
         if (mesh.userData.revertProgress >= 1.0) {
             mesh.userData.revertComplete = true;
@@ -655,31 +672,33 @@ function updateReversion(deltaTime) {
 
     // Spread activation to neighbors from newly activated meshes
     newlyActivatedMeshes.forEach(activatedMesh => {
-         if (activatedMesh.userData.neighbors && activatedMesh.userData.neighbors.length > 0) {
+        if (activatedMesh.userData.neighbors && activatedMesh.userData.neighbors.length > 0) {
             activatedMesh.userData.neighbors.forEach(neighborMesh => {
                 // Check if neighbor exists in revertingMeshes and is not already active/complete
                 const neighborData = revertingMeshes.find(m => m === neighborMesh);
                 if (neighborData && !neighborData.userData.revertActive && !neighborData.userData.revertComplete) {
                     // Activate neighbor with a slight delay, similar to infection spread logic
-                    neighborData.userData.revertDelay = Math.min(neighborData.userData.revertDelay, 0.2 + Math.random() * 0.5); 
+                    neighborData.userData.revertDelay = Math.min(neighborData.userData.revertDelay, 0.2 + Math.random() * 0.5);
                 }
             });
         }
     });
-    
+
     // Gradually revert breathing speed to the stored original speed
     let speedReverted = true;
     if (mixer) {
         const currentSpeed = mixer.timeScale;
         const targetSpeed = 1.0; // Revert to default speed 1.0
         if (Math.abs(currentSpeed - targetSpeed) > 0.01) {
-            mixer.timeScale += (targetSpeed - currentSpeed) * deltaTime * 0.5; // Slower reversion speed
+            // Adjust reversion speed - maybe make it dependent on revertTransitionDuration?
+            const revertSpeedFactor = 0.5; // Controls how fast speed reverts relative to color
+            mixer.timeScale += (targetSpeed - currentSpeed) * deltaTime * revertSpeedFactor;
             speedReverted = false;
         } else {
-             mixer.timeScale = targetSpeed; // Snap to target when close
+            mixer.timeScale = targetSpeed; // Snap to target when close
         }
     }
-    
+
     // Check if all reversion is complete
     if (allMeshesComplete && speedReverted) {
         console.log("Reversion complete.");
@@ -726,10 +745,10 @@ function resetVisualsToOriginal() {
     if (mixer) {
         mixer.timeScale = 1.0; // Reset speed to default
     }
-    
+
     // Reset state flags
     resetDrugStateVariables();
-    revertingInProgress = false; 
+    revertingInProgress = false;
 }
 
 // Modify original resetDrugEffects to call the new reset functions

@@ -123,7 +123,24 @@ const drugData = {
     }
 };
 
+// Placeholder total durations (application + active + revert) in milliseconds
+// !!! IMPORTANT: These are SCALED representative durations for visualization, not exact pharmacological times !!!
+const drugTimings = {
+    albuterol: 60000,      // Fast onset, medium duration (Represents ~3-6h -> 60s)
+    budesonide: 90000,     // Slower onset, longer duration (Represents longer ICS effect -> 90s)
+    prednisone: 120000,    // Systemic, slower onset, longer duration (Represents longer steroid effect -> 120s)
+    epinephrine: 45000,    // Very rapid onset, short duration (Represents minutes -> 45s)
+    morphine: 75000,       // Relatively fast onset, medium duration (Represents ~4-5h -> 75s)
+    cisplatin: 100000,     // Delayed/long-term effects represented conceptually (100s)
+    isoniazid: 90000,      // Gradual effect represented conceptually (90s)
+    saline: 30000,         // Short-term hydration effect (30s)
+    nicotine: 50000,       // Rapid onset, short duration (Represents minutes/hour -> 50s)
+    antihistamines: 70000, // Medium onset, medium duration (Represents ~4-6h -> 70s)
+    default: 45000         // Default duration if specific drug timing is missing (45s)
+};
+
 let progressBarIntervalId = null; // Keep track of the interval timer
+let currentTotalDuration = 0; // Store the duration for the current effect
 
 document.addEventListener('DOMContentLoaded', () => {
     initThreeJS();
@@ -133,18 +150,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('effectDurationCalculated', (event) => {
         const progressBarContainer = document.getElementById('effect-progress-container');
         const progressBar = document.getElementById('effect-progress-bar');
+        const timerDisplay = document.getElementById('effect-timer');
         const duration = event.detail.duration;
+        currentTotalDuration = duration; // Store the duration
 
-        if (progressBarContainer && progressBar && duration > 0) {
+        if (progressBarContainer && progressBar && timerDisplay && duration > 0) {
             // Clear any previous animation just in case
             if (progressBarIntervalId) {
                 clearInterval(progressBarIntervalId);
                 progressBarIntervalId = null;
             }
-            // Show and start the progress bar with the received duration
+            // Show and start the progress bar and timer with the received duration
             progressBarContainer.style.display = 'block';
             progressBar.style.width = '0%'; // Reset width
-            startProgressBar(duration, progressBar);
+            timerDisplay.textContent = formatTime(duration); // Set initial time
+            startProgressBar(duration, progressBar, timerDisplay);
         }
     });
 });
@@ -155,6 +175,7 @@ function setupDrugSelector() {
     const drugInfo = document.getElementById('drug-info');
     const progressBarContainer = document.getElementById('effect-progress-container');
     const progressBar = document.getElementById('effect-progress-bar');
+    const timerDisplay = document.getElementById('effect-timer'); // Get timer display
 
     if (!drugSelector || !dosageSelector || !drugInfo || !progressBarContainer || !progressBar) {
         console.error('Required DOM elements not found');
@@ -179,21 +200,25 @@ function setupDrugSelector() {
             clearInterval(progressBarIntervalId);
             progressBarIntervalId = null;
         }
-        // Reset and hide progress bar until new duration is received
+        // Reset and hide progress bar/timer until new duration is received
         progressBar.style.width = '0%';
         progressBarContainer.style.display = 'none';
+        if (timerDisplay) timerDisplay.textContent = formatTime(0); // Reset timer display
 
         if (selectedDrug && drugData[selectedDrug]) {
             const defaultDosage = drugData[selectedDrug].dosageLevels[0].value;
-            loadDrugModel(selectedDrug, defaultDosage); // This will trigger the event later
+            const duration = drugTimings[selectedDrug] || drugTimings.default; // Get duration or default
+            loadDrugModel(selectedDrug, defaultDosage, duration); // Pass duration
             updateDrugInfo(drugData[selectedDrug], defaultDosage);
             drugInfo.style.display = 'block';
-            // Progress bar is now started by the 'effectDurationCalculated' event listener
+            // Progress bar & timer are now started by the 'effectDurationCalculated' event listener
 
         } else {
             drugInfo.style.display = 'none';
-            // Ensure progress bar is hidden if no drug is selected
+            // Ensure progress bar/timer is hidden if no drug is selected
             progressBarContainer.style.display = 'none';
+            if (timerDisplay) timerDisplay.textContent = formatTime(0);
+            loadDrugModel(null, 0, 0); // Clear model/effect if no drug selected
         }
     });
 
@@ -206,14 +231,16 @@ function setupDrugSelector() {
             clearInterval(progressBarIntervalId);
             progressBarIntervalId = null;
         }
-        // Reset and hide progress bar until new duration is received
+        // Reset and hide progress bar/timer until new duration is received
         progressBar.style.width = '0%';
         progressBarContainer.style.display = 'none';
+        if (timerDisplay) timerDisplay.textContent = formatTime(0); // Reset timer display
 
         if (selectedDrug && drugData[selectedDrug]) {
-            loadDrugModel(selectedDrug, dosageValue); // This will trigger the event later
+            const duration = drugTimings[selectedDrug] || drugTimings.default; // Get duration or default
+            loadDrugModel(selectedDrug, dosageValue, duration); // Pass duration
             updateDrugInfo(drugData[selectedDrug], dosageValue);
-            // Progress bar is now started by the 'effectDurationCalculated' event listener
+            // Progress bar & timer are now started by the 'effectDurationCalculated' event listener
         }
     });
 }
@@ -266,8 +293,19 @@ function interpolateColor(color1, color2, factor) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-// Function to animate the progress bar with gradient color
-function startProgressBar(duration, progressBarElement) {
+// Function to format milliseconds into MM:SS format
+function formatTime(milliseconds) {
+    if (milliseconds <= 0) {
+        return "00:00";
+    }
+    const totalSeconds = Math.ceil(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+// Function to animate the progress bar with gradient color and update timer
+function startProgressBar(duration, progressBarElement, timerElement) {
     const startTime = Date.now();
 
     // Define colors for the gradient effect (RGB 0-255)
@@ -281,12 +319,22 @@ function startProgressBar(duration, progressBarElement) {
         progressBarIntervalId = null;
     }
 
+    // Ensure timer element exists
+    if (!timerElement) {
+        console.error("Timer display element not found");
+        return;
+    }
+
     progressBarIntervalId = setInterval(() => {
         const elapsedTime = Date.now() - startTime;
         const overallProgress = Math.min(1, elapsedTime / duration); // Progress from 0 to 1
+        const remainingTime = Math.max(0, duration - elapsedTime); // Calculate remaining time
 
         // Update width
         progressBarElement.style.width = overallProgress * 100 + '%';
+
+        // Update timer display
+        timerElement.textContent = formatTime(remainingTime);
 
         // Calculate color based on progress phase
         let currentColor;
@@ -305,15 +353,17 @@ function startProgressBar(duration, progressBarElement) {
         // Apply the calculated color
         progressBarElement.style.backgroundColor = currentColor;
 
+
         // Stop when duration is reached
         if (overallProgress >= 1) {
             clearInterval(progressBarIntervalId);
             progressBarIntervalId = null;
             // Optionally reset to a final state or hide
-             progressBarElement.style.backgroundColor = `rgb(${startColor.r}, ${startColor.g}, ${startColor.b})`; // Ensure final color is set
+            progressBarElement.style.backgroundColor = `rgb(${startColor.r}, ${startColor.g}, ${startColor.b})`; // Ensure final color is set
+            timerElement.textContent = formatTime(0); // Ensure timer shows 00:00 at the end
             // setTimeout(() => {
             //     document.getElementById('effect-progress-container').style.display = 'none';
-            // }, 1000); 
+            // }, 1000);
         }
     }, 30); // Update slightly more frequently for smoother color transition
 }
