@@ -25,9 +25,16 @@ This project visualizes the effects of various drugs on a 3D model of human lung
 | Nicotine        | Red spreading                          | Initial increase then decrease  |
 | Antihistamines  | Pale pink spreading                    | Slightly slowed breathing       |
 
-## Installation
+## Cloning 
 ```bash
 https://github.com/Gunda-Sukesh/LungXSim.git
+```
+## Installing Dependencies
+```bash
 cd drug-visualization
 npm install
+```
+## Running the project
+```bash
 npm run dev
+```
