@@ -38,3 +38,5 @@ npm install
 ```bash
 npm run dev
 ```
+## Vercel Deployment:
+https://lung-sim-x.vercel.app/
